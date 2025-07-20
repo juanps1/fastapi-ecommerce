@@ -12,8 +12,9 @@ class ProductoOut(ProductoBase):
     id: int
 
     class Config:
-        orm_mode = True
-        
+        from_attributes = True
+
+
 class UsuarioCreate(BaseModel):
     username: str
     email: str
@@ -23,6 +24,7 @@ class UsuarioOut(BaseModel):
     id: int
     username: str
     email: str
+    rol: str 
 
     class Config:
         orm_mode = True

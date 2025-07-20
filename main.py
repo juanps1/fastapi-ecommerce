@@ -1,13 +1,18 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+import logging
 
 import models, schemas, crud, auth
 from database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
-
+logging.basicConfig(level=logging.DEBUG)
 app = FastAPI()
+def verificar_admin(current_user: schemas.UsuarioOut = Depends(get_current_user)):
+    if current_user.rol != "admin":
+        raise HTTPException(status_code=403, detail="Solo admins pueden realizar esta acción")
+    return current_user
 
 # 🔌 Inyección de dependencia para sesión de BD
 def get_db():
@@ -65,6 +70,7 @@ def listar_productos(db: Session = Depends(get_db)):
 def crear_producto(
     producto: schemas.ProductoCreate,
     db: Session = Depends(get_db),
-    current_user: schemas.UsuarioOut = Depends(get_current_user)  # Solo logueados
+    current_user: schemas.UsuarioOut = Depends(verificar_admin)  # 👈 solo admin
 ):
     return crud.create_producto(db, producto)
+

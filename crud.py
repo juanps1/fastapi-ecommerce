@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session
 import models, schemas
+import auth
+
 
 def get_productos(db: Session):
     return db.query(models.Producto).all()
@@ -16,7 +18,7 @@ def get_usuario_por_username(db: Session, username: str):
 
 def crear_usuario(db: Session, usuario: schemas.UsuarioCreate):
     hashed_pw = auth.hashear_password(usuario.password)
-    db_usuario = models.Usuario(username=usuario.username, email=usuario.email, hashed_password=hashed_pw)
+    db_usuario = models.Usuario(username=usuario.username, email=usuario.email, hashed_password=hashed_pw, rol="cliente")
     db.add(db_usuario)
     db.commit()
     db.refresh(db_usuario)

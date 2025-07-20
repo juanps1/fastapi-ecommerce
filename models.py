@@ -16,3 +16,4 @@ class Usuario(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    rol = Column(String, default="cliente")  # 👈 agregamos el rol
