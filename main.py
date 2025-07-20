@@ -3,7 +3,9 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 import logging
-
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 import models, schemas, crud, auth
 from database import SessionLocal, engine
 
@@ -11,7 +13,7 @@ logging.basicConfig(level=logging.DEBUG)
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
-
+templates = Jinja2Templates(directory="templates")
 # 📦 DB Dependency
 def get_db():
     db = SessionLocal()
@@ -22,6 +24,10 @@ def get_db():
 
 # 🔐 Auth
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+@app.get("/", response_class=HTMLResponse)
+def mostrar_login(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
@@ -129,3 +135,11 @@ def historial_compras(
     current_user: schemas.UsuarioOut = Depends(get_current_user)
 ):
     return crud.get_historial_compras(db, current_user.id)
+
+@app.get("/productos/html", response_class=HTMLResponse)
+def ver_productos(request: Request):
+    return templates.TemplateResponse("productos.html", {"request": request})
+
+@app.get("/api/productos")
+def get_productos(db: Session = Depends(get_db)):
+    return crud.get_all_productos(db)

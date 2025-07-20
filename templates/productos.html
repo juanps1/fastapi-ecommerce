@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Productos</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f2f2f2;
+      padding: 2rem;
+    }
+    h2 {
+      text-align: center;
+    }
+    .producto {
+      background: white;
+      border-radius: 5px;
+      padding: 1rem;
+      margin: 1rem auto;
+      width: 300px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    #carrito {
+      margin-top: 2rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h2>Productos Disponibles</h2>
+  <div id="productos"></div>
+
+  <div id="carrito">
+    <h3>Total: $<span id="total">0</span></h3>
+    <button onclick="comprar()">Comprar</button>
+  </div>
+
+  <script>
+    const token = localStorage.getItem("token");
+    const productosDiv = document.getElementById("productos");
+    const carrito = [];
+    let total = 0;
+
+    async function cargarProductos() {
+      const res = await fetch("http://localhost:8000/api/productos", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      const productos = await res.json();
+
+      productos.forEach(prod => {
+        const div = document.createElement("div");
+        div.className = "producto";
+        div.innerHTML = `
+          <h4>${prod.nombre}</h4>
+          <p>Precio: $${prod.precio}</p>
+          <p>Stock: ${prod.stock}</p>
+          <button onclick="agregar(${prod.id}, '${prod.nombre}', ${prod.precio})">Agregar al carrito</button>
+        `;
+        productosDiv.appendChild(div);
+      });
+    }
+
+    function agregar(id, nombre, precio) {
+      const existente = carrito.find(p => p.producto_id === id);
+      if (existente) {
+        existente.cantidad++;
+      } else {
+        carrito.push({ producto_id: id, cantidad: 1, precio_unitario: precio });
+      }
+      total += precio;
+      document.getElementById("total").innerText = total;
+    }
+
+    async function comprar() {
+      if (carrito.length === 0) return alert("Carrito vacío");
+
+      const res = await fetch("http://localhost:8000/comprar", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(carrito)
+      });
+
+      if (res.ok) {
+        alert("Compra exitosa ✅");
+        carrito.length = 0;
+        total = 0;
+        document.getElementById("total").innerText = 0;
+      } else {
+        alert("Error en la compra ❌");
+      }
+    }
+
+    cargarProductos();
+  </script>
+</body>
+</html>
