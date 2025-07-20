@@ -8,3 +8,11 @@ class Producto(Base):
     nombre = Column(String, index=True)
     precio = Column(Float)
     stock = Column(Integer)
+
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
