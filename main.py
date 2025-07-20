@@ -5,14 +5,12 @@ import logging
 
 import models, schemas, crud, auth
 from database import SessionLocal, engine
+from jose import JWTError, jwt
 
-models.Base.metadata.create_all(bind=engine)
 logging.basicConfig(level=logging.DEBUG)
+models.Base.metadata.create_all(bind=engine)
+
 app = FastAPI()
-def verificar_admin(current_user: schemas.UsuarioOut = Depends(get_current_user)):
-    if current_user.rol != "admin":
-        raise HTTPException(status_code=403, detail="Solo admins pueden realizar esta acción")
-    return current_user
 
 # 🔌 Inyección de dependencia para sesión de BD
 def get_db():
@@ -23,7 +21,7 @@ def get_db():
         db.close()
 
 # 🔐 Autenticación con token
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
@@ -32,17 +30,23 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = auth.jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
+        payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
-    except Exception:
+    except JWTError:
         raise credentials_exception
 
     user = crud.get_usuario_por_username(db, username)
     if user is None:
         raise credentials_exception
     return user
+
+# 🔐 Verificación de rol admin
+def verificar_admin(current_user: schemas.UsuarioOut = Depends(get_current_user)):
+    if current_user.rol != "admin":
+        raise HTTPException(status_code=403, detail="Solo admins pueden realizar esta acción")
+    return current_user
 
 # 🔐 Registro
 @app.post("/register", response_model=schemas.UsuarioOut)
@@ -74,3 +78,12 @@ def crear_producto(
 ):
     return crud.create_producto(db, producto)
 
+@app.get("/hacer_admin/{username}")
+def hacer_admin(username: str, db: Session = Depends(get_db)):
+    user = crud.get_usuario_por_username(db, username)
+    if user:
+        user.rol = "admin"
+        db.commit()
+        return {"mensaje": f"{username} ahora es admin"}
+    else:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
