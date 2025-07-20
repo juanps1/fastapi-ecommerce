@@ -1,41 +1,25 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import List
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+
+import models, schemas, crud
+from database import SessionLocal, engine
+
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# Modelo base
-class Producto(BaseModel):
-    nombre: str
-    precio: float
-    stock: int
+# 🔌 Inyección de dependencia para sesión de BD
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-# Simulación de base de datos en memoria
-productos: List[Producto] = []
+@app.get("/productos", response_model=list[schemas.ProductoOut])
+def listar_productos(db: Session = Depends(get_db)):
+    return crud.get_productos(db)
 
-# ✅ GET - Listar productos
-@app.get("/productos")
-def listar_productos():
-    return productos
-
-# ✅ POST - Crear producto
-@app.post("/productos")
-def crear_producto(producto: Producto):
-    productos.append(producto)
-    return {"mensaje": "Producto agregado", "producto": producto}
-
-# ✅ PUT - Editar producto (por índice)
-@app.put("/productos/{indice}")
-def actualizar_producto(indice: int, producto: Producto):
-    if indice >= len(productos):
-        raise HTTPException(status_code=404, detail="Producto no encontrado")
-    productos[indice] = producto
-    return {"mensaje": "Producto actualizado", "producto": producto}
-
-# ✅ DELETE - Eliminar producto
-@app.delete("/productos/{indice}")
-def eliminar_producto(indice: int):
-    if indice >= len(productos):
-        raise HTTPException(status_code=404, detail="Producto no encontrado")
-    eliminado = productos.pop(indice)
-    return {"mensaje": "Producto eliminado", "producto": eliminado}
+@app.post("/productos", response_model=schemas.ProductoOut)
+def crear_producto(producto: schemas.ProductoCreate, db: Session = Depends(get_db)):
+    return crud.create_producto(db, producto)
